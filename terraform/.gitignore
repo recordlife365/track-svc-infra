@@ -1,0 +1,5 @@
+terraform.tfvars
+.terraform/
+*.tfstate
+*.tfstate.backup
+# .terraform.lock.hcl is intentionally committed — it pins provider versions
