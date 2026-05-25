@@ -11,17 +11,21 @@ terraform {
   }
 
   backend "s3" {
-    endpoint                    = "https://nyc3.digitaloceanspaces.com"
-    bucket                      = "lifememo-tfstate"
+    endpoints = {
+      s3 = "https://sfo3.digitaloceanspaces.com"
+    }
+    bucket                      = "lifememo"
     key                         = "track-svc-infra/terraform.tfstate"
     region                      = "us-east-1" # required field, ignored by DO
     skip_credentials_validation = true
     skip_metadata_api_check     = true
     skip_region_validation      = true
-    force_path_style            = true
-    # Credentials supplied via env vars:
-    # AWS_ACCESS_KEY_ID     = DO Spaces access key
-    # AWS_SECRET_ACCESS_KEY = DO Spaces secret key
+    skip_requesting_account_id  = true
+    use_path_style              = true
+    # Credentials supplied via -backend-config on init:
+    # terraform init \
+    #   -backend-config="access_key=$SPACES_ACCESS_KEY_ID" \
+    #   -backend-config="secret_key=$SPACES_SECRET_ACCESS_KEY"
   }
 }
 

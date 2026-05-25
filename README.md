@@ -29,21 +29,24 @@ Nginx Ingress Controller   (routes by path)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [doctl](https://docs.digitalocean.com/reference/doctl/how-to/install/) (DigitalOcean CLI)
 - A DigitalOcean API token
-- A DigitalOcean Spaces bucket (`lifememo-tfstate` in `nyc3`) for remote state
+- A DigitalOcean Spaces bucket (`lifememo` in `sfo3`) for remote state
 - A Spaces Access Key — DO Control Panel → API → Spaces Keys
 
 ## Remote State
 
-Terraform state is stored in DigitalOcean Spaces (`lifememo-tfstate` bucket), not locally. Any machine with the correct credentials and `terraform init` will share the same state.
+Terraform state is stored in DigitalOcean Spaces (`lifememo` bucket), not locally. Any machine with the correct credentials and `terraform init` will share the same state.
 
 ## First-time setup
 
-### 1. Set environment variables
+### 1. Authenticate and set environment variables
 
 ```bash
+# Authenticate doctl (interactive — paste your Personal Access Token when prompted)
+doctl auth init
+
 export DIGITALOCEAN_TOKEN=<your-do-api-token>
-export AWS_ACCESS_KEY_ID=<your-spaces-access-key>
-export AWS_SECRET_ACCESS_KEY=<your-spaces-secret-key>
+export SPACES_ACCESS_KEY_ID=<your-spaces-access-key>
+export SPACES_SECRET_ACCESS_KEY=<your-spaces-secret-key>
 ```
 
 ### 2. Copy and fill in tfvars
@@ -62,7 +65,9 @@ doctl kubernetes options versions
 
 ```bash
 cd terraform
-terraform init
+terraform init \
+  -backend-config="access_key=$SPACES_ACCESS_KEY_ID" \
+  -backend-config="secret_key=$SPACES_SECRET_ACCESS_KEY"
 ```
 
 This connects to the remote state in DO Spaces.
@@ -94,7 +99,7 @@ kubectl get svc -n ingress-nginx ingress-nginx-controller
 
 ### 7. Update DNS A-records
 
-Set the `EXTERNAL-IP` as the value for both A-records in DO Control Panel → Networking → Domains → lifememo.org:
+Set the `EXTERNAL-IP` as the value for both A-records in DigitalOcean Control Panel → Networking → Domains → lifememo.org:
 
 | Record name    | Type | Value            |
 |----------------|------|------------------|

@@ -1,7 +1,7 @@
 # Copy to terraform.tfvars and fill in — never commit terraform.tfvars
-cluster_name = "lifememo-cluster"
-region       = "nyc3"
-k8s_version  = "1.32.2-do.0" # run: doctl kubernetes options versions
-node_size    = "s-2vcpu-4gb"
-node_count   = 2
+cluster_name = "recordlife365"
+region       = "sfo2"
+k8s_version  = "1.35.1-do.6" # run: doctl kubernetes options versions
+node_size    = "s-1vcpu-2gb"
+node_count   = 1
 # do_token supplied via env: export DIGITALOCEAN_TOKEN=...
