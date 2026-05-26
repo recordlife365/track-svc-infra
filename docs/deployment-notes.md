@@ -90,5 +90,57 @@ probes:
 
 ### 8. Domain Name Related information
 
-- Purchased domain name: lifememo.org from clodflare.
-- Added 3 A record at clourflare (@, api.lifememo.org, staging.api.lifememo.org) 
+- Purchased domain name: lifememo.org from Cloudflare.
+- DNS managed in Cloudflare (nameservers locked to Cloudflare — cannot use DigitalOcean DNS).
+- A records in Cloudflare: `api.lifememo.org` and `staging.api.lifememo.org` → `165.227.242.138` (ingress IP), both Proxied.
+- `@` (lifememo.org) A record → `192.0.2.1` (placeholder), Proxied — traffic intercepted by Cloudflare Worker before reaching origin.
+
+---
+
+## 2026-05-25 — UI Deployment (DigitalOcean Spaces + Cloudflare Worker)
+
+### 1. UI hosted on DigitalOcean Spaces CDN
+
+- React app (Vite) built in GitHub Actions and synced to `s3://lifememo/ui/` via `aws s3 sync` with `--acl public-read`.
+- CDN enabled on the bucket: `https://lifememo.sfo3.cdn.digitaloceanspaces.com`
+- `VITE_API_URL` set as a GitHub Actions environment variable (production environment) — baked into the bundle at build time.
+- Bucket layout keeps concerns separated:
+  - `lifememo/ui/` — React static files
+  - `lifememo/track-svc-infra/` — Terraform remote state
+
+### 2. Custom domain via Cloudflare Worker
+
+**Problem:** DO Spaces CDN custom domains require DigitalOcean nameservers. Since the domain is registered through Cloudflare Registrar, nameservers cannot be changed. Cloudflare CNAME proxying to DO CDN causes Error 1014 (cross-account ban).
+
+**Solution:** A Cloudflare Worker acts as a transparent proxy from `lifememo.org` to the DO Spaces CDN — the browser URL stays `lifememo.org` with no redirect.
+
+Worker code:
+```javascript
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    let pathname = url.pathname;
+    if (pathname === '/' || !pathname.includes('.')) {
+      pathname = '/index.html';
+    }
+    const cdnUrl = `https://lifememo.sfo3.cdn.digitaloceanspaces.com/ui${pathname}`;
+    return fetch(cdnUrl);
+  }
+}
+```
+
+Worker route: `lifememo.org/*` → worker.
+
+### 3. CORS configuration
+
+Auth service (`track-svc-auth`) required CORS headers since the UI (`lifememo.sfo3.cdn.digitaloceanspaces.com`) and API (`api.lifememo.org`) are on different origins. Added `CorsConfigurationSource` bean in `SecurityConfig.java` using `allowedOriginPatterns("*")` with `allowCredentials(true)`.
+
+### 4. Terraform remote state
+
+- DO Spaces bucket `lifememo` (sfo3) used as Terraform S3-compatible backend.
+- Credentials passed via `-backend-config` flags (not `AWS_*` env vars):
+  ```bash
+  terraform init \
+    -backend-config="access_key=$SPACES_ACCESS_KEY_ID" \
+    -backend-config="secret_key=$SPACES_SECRET_ACCESS_KEY"
+  ```
